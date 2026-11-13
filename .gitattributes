@@ -1,0 +1,7 @@
+# Texto com quebra de linha normalizada (LF no repositório).
+* text=auto
+
+# Arquivos binários: o Git não deve tentar converter nem mostrar diff de texto.
+*.pdf  binary
+*.docx binary
+*.png  binary

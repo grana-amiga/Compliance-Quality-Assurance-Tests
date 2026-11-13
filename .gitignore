@@ -1,0 +1,20 @@
+# Dependências do Node (recriadas com npm install)
+fonte/node_modules/
+
+# Saídas geradas pelos scripts (modelo, previews, documento e .zip)
+build/
+__pycache__/
+*.zip
+
+# Arquivos temporários do Word e do LibreOffice
+~$*
+.~lock.*
+
+# Material de aula (direitos reservados do professor, não pode ser público)
+aulas/
+
+# IDE / SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
