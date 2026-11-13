@@ -1,0 +1,14 @@
+Global Solution 2026/2 – CitizenTech · Compliance, Quality Assurance & Tests
+Projeto: Grana Amiga – Arquitetura de Soluções (TOGAF + ArchiMate)
+Turma: 2TDSPR
+
+RM 567295 – Cassio Ribeiro
+RM 567265 – Davi Isac Colin Pereira
+RM 568542 – Hugo Souza de Jesus
+RM 567300 – Matheus Peres Moraes de Jesus
+RM 567651 – Pedro Gonçalves Rodrigues
+
+Conteúdo do .zip:
+- GranaAmiga-Documento-Descritivo.pdf / .docx – documento descritivo da solução
+- GranaAmiga-Arquitetura.archimate – modelo do Archi (5 visões: completa + uma por camada)
+- GranaAmiga-Diagrama-Arquitetura.pdf – visões exportadas do Archi em PDF (vetorial)
