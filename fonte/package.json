@@ -1,0 +1,12 @@
+{
+  "name": "grana-amiga-compliance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gera o documento descritivo da arquitetura da Grana Amiga (GS 2026/2 – Compliance, Quality Assurance & Tests).",
+  "scripts": {
+    "documento": "node gerar_documento.js ../build/archi ../build/entrega/GranaAmiga-Documento-Descritivo.docx"
+  },
+  "dependencies": {
+    "docx": "^9.15.3"
+  }
+}
