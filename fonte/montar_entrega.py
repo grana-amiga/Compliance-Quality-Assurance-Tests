@@ -23,7 +23,7 @@ EQUIPE = """Global Solution 2026/2 – CitizenTech · Compliance, Quality Assura
 Projeto: Grana Amiga – Arquitetura de Soluções (TOGAF + ArchiMate)
 Turma: 2TDSPR
 
-RM 567295 – Cassio Ribeiro
+RM 567295 – Cassio Alexandre Ribeiro de Moraes
 RM 567265 – Davi Isac Colin Pereira
 RM 568542 – Hugo Souza de Jesus
 RM 567300 – Matheus Peres Moraes de Jesus

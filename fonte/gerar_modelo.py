@@ -77,7 +77,7 @@ for k, n, x, d in [
     ("a_82", "ASSESS: 82% das famílias têm dívidas (Peic/CNC, jul/2026)", 235, "Recorde da série histórica da CNC."),
     ("a_849", "ASSESS: 84,9% entre famílias com renda até 3 salários mínimos", 430, "Contra 72% acima de 10 salários mínimos."),
     ("a_cartao", "ASSESS: Cartão de crédito em 85,3% das famílias endividadas (Peic, jul/2026)", 625, "Rotativo e parcelamento são o principal vilão."),
-    ("a_30", "ASSESS: Comprometimento médio de ~30% da renda com dívidas", 820, "Base do limite Verde do Termômetro do Dinheiro."),
+    ("a_30", "ASSESS: Comprometimento médio de ~30% da renda com dívidas", 820, "Base do limite Verde do termômetro de dívidas da API Java (parcelas ÷ renda)."),
     ("a_ling", "ASSESS: Linguagem financeira difícil exclui quem tem baixa escolaridade", 1015, ""),
     ("a_tools", "ASSESS: Faltam ferramentas gratuitas, com áudio e que funcionem offline", 1210, ""),
     ("a_invis", "ASSESS: Consumo de energia só aparece quando a conta chega", 1405, ""),
@@ -106,13 +106,13 @@ for k, n, x, d in [
 REQS = [
     ("r_login", "REQ: Login por telefone + senha (JWT) e biometria do aparelho", "Biometria só destrava o token salvo; voz apenas para navegação."),
     ("r_painel", "REQ: Painel agregado e anonimizado para CRAS e parceiros", "Modelo B2G que sustenta a gratuidade."),
-    ("r_termo", "REQ: Termômetro – Verde ≤ 30%, Amarelo ≤ 50%, Vermelho > 50% da renda", "comprometimento = soma das parcelas ativas / renda mensal."),
-    ("r_plano", "REQ: Plano de quitação (maior juros primeiro) com alertas de vencimento", "Método avalanche."),
+    ("r_termo", "REQ: Termômetro – gastos ÷ entradas: Verde < 70%, Amarelo < 90%, Vermelho ≥ 90%", "Termômetro do Dinheiro do painel do app e do PL/SQL. A API Java tem também o termômetro de dívidas (parcelas ÷ renda: Verde ≤ 30%, Amarelo ≤ 50%, Vermelho > 50%), mostrado na aba Dívidas."),
+    ("r_plano", "REQ: Plano de quitação (maior juros primeiro) com alertas de vencimento", "Método avalanche. API Java: /dividas/{id}/plano, /dividas/alertas (15 dias) e /dividas/termometro."),
     ("r_gastos", "REQ: Registrar gastos por ícones, voz ou WhatsApp", ""),
     ("r_trilhas", "REQ: Trilhas e desafios gerenciáveis sem novo deploy do app", ""),
     ("r_jogos", "REQ: Área aberta com jogos sem cadastro, com áudio e ícones grandes", ""),
     ("r_medidor", "REQ: Medidor mostra a luz em R$ e alerta antes de estourar a meta", "LED verde < 70%, amarelo 70–100%, vermelho > 100% + buzzer."),
-    ("r_offline", "REQ: Registro offline com sincronização posterior", ""),
+    ("r_offline", "REQ: Registro offline com sincronização posterior", "Arquitetura-alvo: ainda não implementado no app (o token fica só na memória e o app guarda no aparelho apenas o progresso das dívidas). O medidor já funciona offline."),
 ]
 for i, (k, n, d) in enumerate(REQS):
     el(k, "Requirement", n, 40 + i * 195, 640, layer=L, doc=d)
@@ -298,9 +298,9 @@ for k, n, x, d in [
     ("as_bot", "SERV: Registro de gasto por mensagem", 420, "Transcreve o áudio e grava a transação com origem = WHATSAPP."),
     ("as_auth", "SERV: Autenticação e conta", 625, ""),
     ("as_tx", "SERV: Transações e categorias", 805, "Extrato do mês, filtro dinâmico, resumo por categoria."),
-    ("as_div", "SERV: Dívidas e plano de quitação", 985, ""),
+    ("as_div", "SERV: Dívidas, plano e alertas", 985, "CRUD de dívidas, plano de quitação, alertas de vencimento e termômetro de dívidas."),
     ("as_cont", "SERV: Conteúdo educativo (trilhas e desafios)", 1190, ""),
-    ("as_termo", "SERV: Cálculo do Termômetro do Dinheiro", 1400, ""),
+    ("as_termo", "SERV: Termômetros do dinheiro e das dívidas", 1400, "Termômetro do Dinheiro (gastos ÷ entradas, <70% / <90%): painel do app e PL/SQL. Termômetro de dívidas (parcelas ÷ renda, ≤30% / ≤50%): GET /api/v1/dividas/termometro."),
     ("as_ener", "SERV: Leituras e alertas de energia", 1610, ""),
 ]:
     el(k, "ApplicationService", n, x, 1790, layer=L, doc=d)
@@ -308,7 +308,8 @@ for k, n, x, d in [
 # componentes com funções e interface aninhadas (composição implícita)
 FW, FH = 160, 62
 CY, CH = 1920, 271
-def comp(key, name, x, w, items, doc=""):
+def comp(key, name, x, w, items, doc="", fh=None):
+    fh = fh or FH
     cols = max(1, (w - 10) // (FW + 10))
     el(key, "ApplicationComponent", name, x, CY, w, CH, layer=L, doc=doc)
     for i, it in enumerate(items):
@@ -317,50 +318,63 @@ def comp(key, name, x, w, items, doc=""):
         fd = it[3] if len(it) > 3 else ""
         c, r_ = i % cols, i // cols
         fw = w - 20 if cols == 1 else FW
-        el(fk, ft, fn, x + 10 + c * (FW + 10), CY + 48 + r_ * (FH + 10), fw, FH, parent=key, doc=fd)
+        el(fk, ft, fn, x + 10 + c * (FW + 10), CY + 48 + r_ * (fh + 10), fw, fh, parent=key, doc=fd)
         rel("Composition" if ft == "ApplicationInterface" else "Assignment", key, fk, show=False)
 
 AI = "ApplicationInterface"
 comp("c_app", "COMP: App Mobile Grana Amiga (Flutter)", 40, 360, [
-    ("f_offline", "FUNC: Modo offline com sincronização"),
-    ("f_voz", "FUNC: Leitura em voz e ícones grandes"),
-    ("f_jogos", "FUNC: Jogos e simuladores"),
-    ("f_biom", "FUNC: Biometria destrava o token JWT"),
+    ("f_jogos", "FUNC: 5 jogos educativos", "ApplicationFunction",
+     "Preciso ou Quero, Mercado com Orçamento, Parcelas e Juros, Cofrinho de Metas e Mito ou Verdade."),
+    ("f_videos", "FUNC: 6 vídeos educativos"),
+    ("f_voz", "FUNC: Leitura em voz e letras grandes", "ApplicationFunction", "flutter_tts e ajuste do tamanho da letra."),
+    ("f_chat", "FUNC: Chat de WhatsApp simulado", "ApplicationFunction",
+     "Frases como 'gastei 30 no mercado' viram lançamentos; o chatbot real é visão de produto."),
     ("ai_telas", "INTERFACE: Telas do app (7 telas acessíveis)", AI,
      "Início, Jogo, Login/Cadastro, Painel, Adicionar gasto, Plano de quitação, Alertas e energia."),
-], doc="Hugo – Mobile. Dados mockados nas classes Dart, estruturado para trocar a fonte pela API Java.")
+], doc="Hugo – Flutter. Consome a API Java publicada no Render (login e cadastro JWT, token só na memória). "
+       "Biometria simulada. O Termômetro do Dinheiro do painel é calculado no app (gastos ÷ entradas); "
+       "trilhas e jogos usam dados locais (a API .NET ainda não é consumida).")
 comp("c_bot", "COMP: Chatbot WhatsApp (visão de produto)", 420, 180, [
     ("f_transc", "FUNC: Extrair valor e categoria da mensagem"),
     ("ai_wa", "INTERFACE: Conversa no WhatsApp", AI),
 ], doc="Fora do escopo das disciplinas; representado como evolução do produto.")
-comp("c_api", "COMP: API Principal (Java 21 · Spring Boot 3.5)", 620, 540, [
+comp("c_api", "COMP: API Principal (Java 25 · Spring Boot 4.1)", 620, 540, [
     ("f_jwt", "FUNC: Autenticação JWT + BCrypt (USER/ADMIN)"),
     ("f_crud", "FUNC: CRUD de transações, categorias e dívidas"),
-    ("f_resumo", "FUNC: Resumo mensal com cache"),
-    ("f_leit", "FUNC: Receber leituras (POST /leituras)"),
+    ("f_resumo", "FUNC: Resumo mensal com cache (Caffeine)"),
+    ("f_divplano", "FUNC: Termômetro de dívidas, plano e alertas"),
+    ("f_simul", "FUNC: Simuladores de juros e poupança"),
+    ("f_leit", "FUNC: Receber leituras do medidor", "ApplicationFunction", "POST /api/v1/dispositivos/{id}/leituras."),
     ("f_hateoas", "FUNC: HATEOAS, validação e erros padronizados"),
     ("f_actuator", "FUNC: Actuator e Swagger/OpenAPI"),
-    ("ai_rest", "INTERFACE: REST API /api (JSON + JWT)", AI),
-], doc="Pedro – Java Advanced. Spring Web, Data JPA, Bean Validation, Security + JWT, Cache, HATEOAS, Actuator, Swagger.")
+    ("ai_rest", "INTERFACE: REST API /api/v1 (JSON + JWT)", AI),
+], doc="Pedro – Java Advanced. Spring Web, Data JPA, Bean Validation, Security + JWT, Caffeine, HATEOAS, Actuator, Swagger. "
+       "Local: H2 em arquivo. Docker/Render: perfil oracle. Inclui exclusão da própria conta (DELETE /api/v1/usuarios/me).")
 comp("c_net", "COMP: API de Conteúdo (C# / EF Core)", 1190, 190, [
     ("f_trilhas", "FUNC: CRUD de trilhas e desafios (EF Core)"),
     ("f_valid", "FUNC: Respostas 400 / 404 em JSON"),
     ("ai_restnet", "INTERFACE: REST API /api/trilhas", AI),
 ], doc="Matheus – ASP.NET Core 8 Web API em C#, EF Core com Oracle. Trilha 1:N Desafio, Migrations versionadas.")
-comp("c_plsql", "COMP: Rotinas PL/SQL (Oracle)", 1400, 230, [
-    ("f_prc1", "PROC: PRC_REGISTRAR_TRANSACAO", "ApplicationProcess"),
-    ("f_prc2", "PROC: PRC_TERMOMETRO_E_PLANO", "ApplicationProcess"),
-], doc="Davi – Banco. IF/ELSIF do Termômetro, cursor por maior juros e LOOP de meses até quitar.")
+comp("c_plsql", "COMP: Rotinas PL/SQL (Oracle)", 1400, 240, [
+    ("f_prc1", "PROC: prc_registrar_transacao", "ApplicationProcess"),
+    ("f_prc3", "PROC: prc_registrar_leitura_energia", "ApplicationProcess"),
+    ("f_prc4", "PROC: prc_resumo_energia", "ApplicationProcess"),
+    ("f_prc5", "PROC: prc_alertas_vencimento", "ApplicationProcess"),
+], fh=44, doc="Davi – Banco. Procedures de operação e de consulta; o Termômetro do Dinheiro, o plano de quitação "
+             "(WHILE mês a mês) e a prioridade das dívidas (cursor explícito por maior juros) ficam em blocos anônimos.")
 comp("c_nr", "COMP: Integração IoT (Node-RED)", 1610, 190, [
     ("f_ponte", "FUNC: Ponte MQTT → HTTP"),
     ("f_dash", "FUNC: Dashboard de consumo"),
     ("ai_dash", "INTERFACE: Dashboard de energia", AI),
-])
+], doc="Valida as leituras, agrega uma por minuto, grava CSV, faz login na API Java com a conta da família e "
+       "publica ajustes de meta, tarifa e tensão para o medidor (tópico config).")
 comp("c_fw", "COMP: Firmware do medidor (ESP32 / Arduino)", 1820, 190, [
     ("f_kwh", "FUNC: Calcular W, kWh e R$ (EmonLib)"),
     ("f_buffer", "FUNC: Guardar leituras offline e publicar"),
-    ("ai_mqtt", "INTERFACE: Tópico MQTT casa/{id}/energia", AI),
-], doc="Irms × tensão = W; W × tempo = kWh; kWh × tarifa = R$; LED/buzzer conforme a meta.")
+    ("ai_mqtt", "INTERFACE: Tópicos MQTT da casa", AI,
+     "granaamiga/casa/{id}/energia, alerta, status (Last Will), fechamento, config e config/ack."),
+], doc="Irms × tensão = W; W × tempo = kWh; kWh × tarifa = R$; LED/buzzer conforme a meta. "
+       "Demonstração no Wokwi (corrente simulada com potenciômetro).")
 
 # objetos de dados (coordenadas finais), deixando corredores livres embaixo dos componentes
 for k, n, x in [
@@ -376,10 +390,11 @@ for c, s, show in [("c_bot", "as_bot", True), ("c_api", "as_auth", True), ("c_ap
     rel("Realization", c, s, show=show)
 for i_, s in [("ai_rest", "as_tx"), ("ai_restnet", "as_cont"), ("ai_wa", "as_bot"), ("ai_dash", "as_ener")]:
     rel("Assignment", i_, s, show=False)
-for s, c, show in [("as_auth", "c_app", True), ("as_cont", "c_app", True), ("as_tx", "c_bot", False)]:
+for s, c, show in [("as_auth", "c_app", True), ("as_tx", "c_app", False), ("as_div", "c_app", False),
+                   ("as_ener", "c_app", False), ("as_termo", "c_app", False), ("as_tx", "c_bot", False)]:
     rel("Serving", s, c, show=show)
 rel("Flow", "c_fw", "c_nr", name="MQTT")
-rel("Flow", "c_nr", "c_api", doc="POST /leituras (JSON com potência, kWh e custo estimado).")
+rel("Flow", "c_nr", "c_api", doc="POST /api/v1/dispositivos/{id}/leituras com o JWT da conta da família.")
 for c, d, a in [("c_api", "do_usuario", "readwrite"), ("c_api", "do_transacao", "readwrite"), ("c_api", "do_divida", "readwrite"),
                 ("c_api", "do_categoria", "read"), ("c_api", "do_leitura", "write"), ("c_api", "do_dispositivo", "read"),
                 ("c_net", "do_trilha", "readwrite"), ("c_net", "do_desafio", "readwrite"),
@@ -394,8 +409,8 @@ for s, p in [("as_tx", "jp_gasto"), ("as_bot", "jp_gasto"), ("as_termo", "jp_ter
 for d, b in [("do_transacao", "bo_gasto"), ("do_divida", "bo_divida"), ("do_usuario", "bo_perfil"),
              ("do_leitura", "bo_leit"), ("do_trilha", "bo_trilha")]:
     rel("Realization", d, b, show=False)
-for e_, r_ in [("f_offline", "r_offline"), ("f_jwt", "r_login"), ("f_prc2", "r_termo"), ("f_prc2", "r_plano"),
-               ("f_kwh", "r_medidor"), ("f_trilhas", "r_trilhas"), ("f_jogos", "r_jogos")]:
+for e_, r_ in [("f_jwt", "r_login"), ("c_plsql", "r_termo"), ("f_divplano", "r_plano"), ("f_chat", "r_gastos"),
+               ("f_kwh", "r_medidor"), ("f_trilhas", "r_trilhas"), ("f_jogos", "r_jogos"), ("f_voz", "r_jogos")]:
     rel("Realization", e_, r_, show=False)
 
 # =============================================================================
@@ -408,16 +423,17 @@ el("G_T", "Grouping", "CAMADA DE TECNOLOGIA  ·  Fase D – Arquitetura de Tecno
 
 el("ts_mqtt", "TechnologyService", "SERV: Broker de mensagens MQTT", 820, 2480, 150, 85, layer=L)
 el("ts_docker", "TechnologyService", "SERV: Hospedagem de containers", 1060, 2480, layer=L)
-el("ts_pg", "TechnologyService", "SERV: Banco relacional PostgreSQL", 1440, 2480, layer=L)
+el("ts_pg", "TechnologyService", "SERV: Banco relacional Oracle (container)", 1440, 2480, layer=L)
 
 TY = 2600
 el("dv_phone", "Device", "DEVICE: Smartphone da família (Android / iOS)", 40, TY, 360, 245, layer=L)
 el("ar_apk", "Artifact", "ARTIFACT: grana_amiga.apk", 52, TY + 45, 160, 60, parent="dv_phone")
 el("sw_os", "SystemSoftware", "SW: Android / iOS", 222, TY + 45, 160, 60, parent="dv_phone")
-el("sw_bio", "SystemSoftware", "SW: Biometria e leitor de tela do aparelho", 52, TY + 118, 160, 60, parent="dv_phone")
+el("sw_bio", "SystemSoftware", "SW: Leitor de tela e voz do aparelho", 52, TY + 118, 160, 60, parent="dv_phone",
+   doc="Síntese de voz usada pelo flutter_tts. A biometria é simulada no app.")
 
 el("dv_esp", "Device", "DEVICE: Medidor de energia ESP32", 420, TY, 380, 245, layer=L,
-   doc="Componentes de baixo custo; se a demo for no Wokwi, a corrente é simulada com potenciômetro.")
+   doc="Componentes de baixo custo. A demonstração é no Wokwi, com a corrente simulada por um potenciômetro.")
 for i, (k, t, n, d) in enumerate([
     ("ar_fw", "Artifact", "ARTIFACT: firmware do medidor", "Arquivo medidor_energia.ino (framework Arduino) com a lógica de medição."),
     ("sw_ard", "SystemSoftware", "SW: Framework Arduino", ""),
@@ -429,9 +445,10 @@ for i, (k, t, n, d) in enumerate([
     c, r_ = i % 3, i // 3
     el(k, t, n, 432 + c * 120, TY + 45 + r_ * 75, 112, 68, parent="dv_esp", doc=d)
 
-el("nd_mqtt", "Node", "NODE: Broker MQTT HiveMQ (nuvem)", 820, TY, 150, 75, layer=L)
-el("nd_nr", "Node", "NODE: Servidor Node-RED", 820, TY + 100, 210, 90, layer=L)
-el("sw_nr", "SystemSoftware", "SW: Node-RED 4.1 (Node.js)", 832, TY + 140, 172, 44, parent="nd_nr")
+el("nd_mqtt", "Node", "NODE: Broker MQTT HiveMQ (público)", 820, TY, 150, 75, layer=L,
+   doc="Broker público na demonstração (porta 1883); em produção, HiveMQ Cloud ou Mosquitto com TLS.")
+el("nd_nr", "Node", "NODE: Node-RED (container Docker)", 820, TY + 100, 210, 90, layer=L)
+el("sw_nr", "SystemSoftware", "SW: Node-RED 4.0 + dashboard", 832, TY + 140, 172, 44, parent="nd_nr")
 
 AX = 1050
 el("nd_vm", "Node", "NODE: VM Azure · Ubuntu 24.04 LTS", AX, TY, 580, 328, layer=L,
@@ -440,13 +457,15 @@ el("sw_docker", "Node", "NODE: Docker Engine + Compose v2", AX + 10, TY + 48, 55
    doc="Executa os dois containers integrados (app + db) em background (docker compose up -d).")
 el("nd_capp", "Node", "NODE: Container app", AX + 20, TY + 93, 262, 126, parent="sw_docker",
    doc="Imagem multi-stage, usuário não-root, WORKDIR, variáveis de ambiente, porta 8080 exposta.")
-el("sw_jre", "SystemSoftware", "SW: Java 21 JRE (Temurin)", AX + 30, TY + 137, 120, 70, parent="nd_capp")
+el("sw_jre", "SystemSoftware", "SW: Java 25 JRE (Temurin)", AX + 30, TY + 137, 120, 70, parent="nd_capp")
 el("ar_jar", "Artifact", "ARTIFACT: API Java (JAR)", AX + 156, TY + 137, 110, 70, parent="nd_capp",
    doc="granaamiga-api.jar, gerado no estágio de build do Dockerfile multi-stage.")
 el("nd_cdb", "Node", "NODE: Container db", AX + 292, TY + 93, 262, 126, parent="sw_docker",
-   doc="PostgreSQL com volume nomeado; porta 5432 só na rede interna granaamiga-network.")
-el("ar_vol", "Artifact", "ARTIFACT: volume postgres-data", AX + 302, TY + 137, 120, 70, parent="nd_cdb")
-el("sw_pg", "SystemSoftware", "SW: PostgreSQL 16", AX + 428, TY + 137, 110, 70, parent="nd_cdb")
+   doc="Oracle AI Database 26ai Free com volume nomeado; porta 1521 só na rede interna granaamiga-network.")
+el("ar_vol", "Artifact", "ARTIFACT: volume oracle-data", AX + 302, TY + 137, 120, 70, parent="nd_cdb",
+   doc="Volume nomeado granaamiga_oracle-data: os dados sobrevivem à recriação dos containers.")
+el("sw_pg", "SystemSoftware", "SW: Oracle 26ai Free", AX + 428, TY + 137, 110, 70, parent="nd_cdb",
+   doc="Oracle AI Database 26ai Free (imagem gvenzl/oracle-free:23.26.3-slim), criado com o script da disciplina de Banco.")
 for i, (k, t, n) in enumerate([
     ("ar_dockerfile", "Artifact", "ARTIFACT: Dockerfile (multi-stage)"),
     ("ar_compose", "Artifact", "ARTIFACT: Compose (YAML)"),
@@ -464,7 +483,7 @@ el("ts_wa", "TechnologyService", "SERV: Mensageria WhatsApp (Cloud API)", 2290, 
 el("nd_ora", "Node", "NODE: Oracle FIAP", 1980, TY, 140, 250, layer=L, fixed=True,
    doc="Servidor Oracle da FIAP (oracle.fiap.com.br), usado pelo .NET e pelo PL/SQL.")
 el("ar_sql", "Artifact", "ARTIFACT: Scripts PL/SQL", 1990, TY + 45, 110, 58, parent="nd_ora",
-   doc="Arquivos .sql com DDL, carga de dados, bloco anônimo e as procedures PRC_REGISTRAR_TRANSACAO e PRC_TERMOMETRO_E_PLANO.")
+   doc="Arquivos .sql com DDL, carga de dados, bloco anônimo e as procedures prc_registrar_transacao, prc_registrar_leitura_energia, prc_resumo_energia e prc_alertas_vencimento.")
 el("ar_migr", "Artifact", "ARTIFACT: Migrations EF Core", 1990, TY + 111, 110, 58, parent="nd_ora")
 el("sw_ora", "SystemSoftware", "SW: Oracle Database", 1990, TY + 177, 110, 58, parent="nd_ora")
 el("nd_net", "Node", "NODE: Execução local (dotnet run)", 2140, TY, 130, 85, layer=L, fixed=True,
@@ -479,6 +498,9 @@ for k, n, x, w in [
 ]:
     el(k, "CommunicationNetwork", n, x, TY + 360, w, 60, layer=L)
 el("nt_inet2", "CommunicationNetwork", "NET: Internet", 820, TY + 360, 210, 60, layer=L)
+el("nd_render", "Node", "NODE: Render (Web Service Docker)", 1980, TY + 360, 440, 60, layer=L, fixed=True,
+   doc="Publica a API Java (perfil oracle) em grana-amiga-api.onrender.com, usada pelo app. "
+       "Conecta-se ao Oracle; no plano gratuito o serviço dorme e a primeira chamada pode levar cerca de 1 minuto.")
 rel("Aggregation", "nt_inet", "nt_inet2", show=False)
 
 for p in ["dv_phone", "dv_esp", "nd_nr", "nd_vm", "sw_docker", "nd_capp", "nd_cdb", "nd_ora"]:
@@ -496,6 +518,8 @@ for s, c in [("ts_mqtt", "c_nr"), ("ts_mqtt", "c_fw"), ("ts_docker", "c_api"), (
              ("ts_ora", "c_plsql"), ("ts_net", "c_net"), ("ts_wa", "c_bot")]:
     rel("Serving", s, c)
 rel("Serving", "sw_nr", "c_nr", show=False)
+rel("Serving", "nd_render", "c_api", doc="Instância publicada da API, consumida pelo app.")
+rel("Association", "nd_render", "nd_ora", doc="A API publicada usa o Oracle (perfil oracle).")
 rel("Realization", "ar_vol", "do_transacao", show=False)
 rel("Association", "ar_dockerfile", "nd_capp", show=False)
 rel("Association", "nt_inet2", "nd_mqtt", show=False)
@@ -504,7 +528,7 @@ for n, a in [("nt_wifi", "dv_esp"), ("nt_inet", "dv_phone"), ("nt_inet2", "nd_nr
     rel("Association", n, a)
 rel("Association", "nt_docker", "nd_capp", show=False)
 rel("Association", "nt_docker", "nd_cdb", show=False)
-rel("Flow", "nd_capp", "nd_cdb", doc="JDBC usando o nome do serviço como host (db:5432) na rede interna.")
+rel("Flow", "nd_capp", "nd_cdb", doc="JDBC usando o nome do serviço como host (db:1521) na rede interna.")
 rel("Flow", "dv_esp", "nd_mqtt", name="MQTT")
 rel("Flow", "nd_mqtt", "nd_nr", doc="Node-RED assina o tópico casa/{id}/energia.")
 
@@ -819,7 +843,7 @@ def build_xml():
         lines.extend(view_xml(vname, layer))
     lines.append("  </folder>")
     lines.append("  <purpose>Arquitetura de Soluções (TOGAF ADM, fases A a D) da Grana Amiga, CitizenTech de educação e "
-                 "organização financeira para famílias de baixa renda. Equipe 2TDSPR: Cassio Ribeiro (RM 567295), "
+                 "organização financeira para famílias de baixa renda. Equipe 2TDSPR: Cassio Alexandre Ribeiro de Moraes (RM 567295), "
                  "Davi Isac Colin Pereira (RM 567265), Hugo Souza de Jesus (RM 568542), Matheus Peres Moraes de Jesus "
                  "(RM 567300), Pedro Gonçalves Rodrigues (RM 567651).</purpose>")
     lines.append("</archimate:model>")
