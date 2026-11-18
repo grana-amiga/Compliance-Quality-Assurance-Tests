@@ -4,7 +4,7 @@
 
 Arquitetura de Soluções da **Grana Amiga** desenvolvida com o **TOGAF ADM** (Fase Preliminar até a Fase D) e modelada em **ArchiMate** na ferramenta **[Archi](https://www.archimatetool.com/)**.
 
-A Grana Amiga é uma CitizenTech de educação e organização financeira para famílias brasileiras de baixa renda. Em julho de 2026, **82% das famílias tinham dívidas** (recorde da série Peic/CNC), chegando a **84,9%** entre quem ganha até três salários mínimos. O app combina jogos educativos sem cadastro, um *Termômetro do Dinheiro* (Verde, Amarelo, Vermelho) com plano de quitação e um medidor de energia IoT que mostra em reais o custo da conta de luz.
+A Grana Amiga é uma CitizenTech de educação e organização financeira para famílias brasileiras de baixa renda. Em julho de 2026, **82% das famílias tinham dívidas** (recorde da série Peic/CNC), chegando a **84,9%** entre quem ganha até três salários mínimos. O app combina jogos e vídeos educativos sem cadastro, um *Termômetro do Dinheiro* (Verde, Amarelo, Vermelho), um termômetro de dívidas com plano de quitação e um medidor de energia IoT que mostra em reais o custo da conta de luz.
 
 ## Integrantes
 
@@ -12,7 +12,7 @@ Turma: **2TDSPR**
 
 | Nome | RM |
 |------|----|
-| Cassio Ribeiro | 567295 |
+| Cassio Alexandre Ribeiro de Moraes | 567295 |
 | Davi Isac Colin Pereira | 567265 |
 | Hugo Souza de Jesus | 568542 |
 | Matheus Peres Moraes de Jesus | 567300 |
@@ -24,7 +24,7 @@ Turma: **2TDSPR**
 
 | Arquivo | Conteúdo |
 |---------|----------|
-| [`entrega/GranaAmiga-Documento-Descritivo.pdf`](entrega/GranaAmiga-Documento-Descritivo.pdf) | Documento descritivo da solução (28 páginas) – também em [`.docx`](entrega/GranaAmiga-Documento-Descritivo.docx) |
+| [`entrega/GranaAmiga-Documento-Descritivo.pdf`](entrega/GranaAmiga-Documento-Descritivo.pdf) | Documento descritivo da solução (29 páginas) – também em [`.docx`](entrega/GranaAmiga-Documento-Descritivo.docx) |
 | [`entrega/GranaAmiga-Arquitetura.archimate`](entrega/GranaAmiga-Arquitetura.archimate) | Modelo do Archi com 5 visões: a completa e uma por camada |
 | [`entrega/GranaAmiga-Diagrama-Arquitetura.pdf`](entrega/GranaAmiga-Diagrama-Arquitetura.pdf) | As 5 visões exportadas do Archi em PDF vetorial (alta definição) |
 | [`entrega/integrantes.txt`](entrega/integrantes.txt) | Nomes, RMs, turma e conteúdo do `.zip` enviado no portal |
@@ -70,13 +70,15 @@ Atores e canais → papéis → serviços de negócio → processos agrupados em
 
 ![Camada de Aplicação](diagramas/03-aplicacao.png)
 
-Serviços de aplicação no topo, componentes com suas funções e interfaces no meio e objetos de dados embaixo. Os componentes são os entregáveis das outras disciplinas: App Flutter, API Principal (Java/Spring Boot), API de Conteúdo (ASP.NET Core), rotinas PL/SQL, integração IoT (Node-RED) e firmware do medidor (ESP32). O chatbot de WhatsApp aparece como visão de produto.
+Serviços de aplicação no topo, componentes com suas funções e interfaces no meio e objetos de dados embaixo. Os componentes são os entregáveis das outras disciplinas: App Flutter (integrado à API Java), API Principal (Java 25 · Spring Boot 4.1), API de Conteúdo (ASP.NET Core 8), rotinas PL/SQL (`prc_registrar_transacao`, `prc_registrar_leitura_energia`, `prc_resumo_energia` e `prc_alertas_vencimento`), integração IoT (Node-RED) e firmware do medidor (ESP32). O chatbot de WhatsApp aparece como visão de produto.
+
+O serviço de termômetros reúne dois indicadores complementares: o **Termômetro do Dinheiro** do painel do app e do PL/SQL (gastos ÷ entradas: Verde < 70%, Amarelo < 90%, Vermelho ≥ 90%) e o **termômetro de dívidas** da API Java (parcelas ÷ renda: Verde ≤ 30%, Amarelo ≤ 50%, Vermelho > 50%).
 
 ### Fase D – Tecnologia
 
 ![Camada de Tecnologia](diagramas/04-tecnologia.png)
 
-VM Azure com Docker Engine e os containers `app` e `db`, Oracle da FIAP, execução local da API .NET, broker MQTT, servidor Node-RED, smartphone da família e medidor ESP32, além das redes (rede móvel Claro, Wi-Fi doméstico e Azure VNet + NSG).
+VM Azure com Docker Engine e os containers `app` (Java 25) e `db` (Oracle AI Database 26ai Free, volume nomeado), API Java publicada no **Render** e usada pelo app, Oracle da FIAP, execução local da API .NET, broker MQTT HiveMQ, Node-RED em container Docker, smartphone da família e medidor ESP32 (demonstrado no Wokwi), além das redes (rede móvel Claro, Wi-Fi doméstico e Azure VNet + NSG).
 
 ---
 
