@@ -176,7 +176,7 @@ O resultado fica em `build/entrega/`, que está no `.gitignore`.
 
 ## Uso de IA generativa
 
-O grupo usou o **Claude (Anthropic)** como apoio para estruturar o documento descritivo, gerar o arquivo do modelo ArchiMate por script e revisar a consistência entre as camadas. Os dados de mercado foram conferidos nas fontes citadas. O modelo foi aberto, conferido e validado no Archi pelos integrantes, e o grupo responde por todas as decisões de arquitetura.
+O desenvolvimento do projeto contou com o apoio de ferramentas de IA em algumas etapas, como a organização da documentação, a elaboração do modelo ArchiMate e a revisão de sua consistência. As informações de mercado foram verificadas nas fontes referenciadas, e o modelo foi revisado e validado pelos integrantes no Archi. As decisões de arquitetura e a versão final do trabalho foram definidas pelo grupo.
 
 ---
 
